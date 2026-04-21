@@ -59,6 +59,9 @@ public class TerrainController : MonoBehaviour
         TerrainSegment segment = m_terrainSegmentPool.Get();
         segment.gameObject.SetActive(true);
         segment.Initialize();
+
+        float startX = prior?.OverlapPoints.Length > 0 ? prior.OverlapPoints[0].x : 0f;
+        segment.transform.position = new(startX, 0f, 0f);
         GenerateTerrainForSegment(segment, prior);
         segment.ShapeController.RefreshSpriteShape();
         return segment;

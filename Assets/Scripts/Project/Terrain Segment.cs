@@ -47,7 +47,8 @@ public class TerrainSegment : MonoBehaviour
         int newPointsStart = Mathf.Max(overlapPoints?.Length ?? 0, points.Length - m_overlapCount);
         int copyCount = points.Length - newPointsStart;
         OverlapPoints = new Vector2[copyCount];
-        Array.Copy(points, newPointsStart, OverlapPoints, 0, copyCount);
+        for (int i = 0; i < copyCount; i++)
+            OverlapPoints[i] = new(points[newPointsStart + i].x + transform.position.x, points[newPointsStart + i].y);
     }
     void SetNonEdgeTangent(Vector2[] points, int index)
     {
@@ -78,20 +79,27 @@ public class TerrainSegment : MonoBehaviour
     {
         int overlapCount = overlapPoints?.Length ?? 0;
         Vector2[] points = new Vector2[overlapCount + m_terrainResolution];
-        if (overlapPoints != null) Array.Copy(overlapPoints, points, overlapCount);
+        float localOffsetX = transform.position.x;
+        if (overlapPoints != null)
+        {
+            for (int i = 0; i < overlapCount; i++)
+                points[i] = new(overlapPoints[i].x - localOffsetX, overlapPoints[i].y);
+        }
+
         float currentYPosition = overlapCount > 0 ? points[overlapCount - 1].y : transform.position.y;
         float directionalSign = overlapCount switch
         {
             >= 2 => points[overlapCount - 1].y > points[overlapCount - 2].y ? -1f : 1f,
             _ => 1f
         };
+
         Random.InitState(seed);
         for (int i = overlapCount; i < points.Length; i++)
         {
-            Vector2 prev = i > 0 ? points[i - 1] : new(transform.position.x, transform.position.y);
+            Vector2 prev = i > 0 ? points[i - 1] : Vector2.zero;
             Vector2 steps = new(Random.Range(m_minimums.x, m_maximums.x), Random.Range(m_minimums.y, m_maximums.y));
             points[i].x = prev.x + steps.x;
-            points[i].y = Mathf.Clamp(currentYPosition + steps.y * directionalSign, transform.position.y + m_minHeight, transform.position.y + m_maxHeight);
+            points[i].y = Mathf.Clamp(currentYPosition + steps.y * directionalSign, m_minHeight, m_maxHeight);
             currentYPosition = points[i].y;
             directionalSign *= -1f;
         }
