@@ -34,22 +34,44 @@ public class TerrainSegment : MonoBehaviour
         for (int i = 0; i < points.Length; i++)
         {
             m_shapeController.spline.InsertPointAt(i, points[i]);
-            if (i <= 0 || i >= points.Length - 1) continue;
-            Vector2 tangent = ComputeTangent(points[i - 1], points[i + 1]);
-            m_shapeController.spline.SetTangentMode(i, ShapeTangentMode.Continuous);
-            m_shapeController.spline.SetLeftTangent(i, -tangent);
-            m_shapeController.spline.SetRightTangent(i, tangent);
+            if (i <= 0) SetLeadingEdgeTangent(points, i);
+            else if (i >= points.Length - 1) SetTrailingEdgeTangent(points, i);
+            else SetNonEdgeTangent(points, i);
         }
+        
         Vector2 lastPoint = points[^1];
         m_shapeController.spline.InsertPointAt(points.Length, new Vector2(lastPoint.x, transform.position.y - m_floorDistance));
         m_shapeController.spline.InsertPointAt(points.Length + 1, new Vector2(points[0].x, transform.position.y - m_floorDistance));
-        int overlapCount = overlapPoints?.Length ?? 0;
-        int newPointsStart = Mathf.Max(overlapCount, points.Length - m_overlapCount);
+        int newPointsStart = Mathf.Max(overlapPoints?.Length ?? 0, points.Length - m_overlapCount);
         int copyCount = points.Length - newPointsStart;
         OverlapPoints = new Vector2[copyCount];
         Array.Copy(points, newPointsStart, OverlapPoints, 0, copyCount);
     }
-
+    void SetNonEdgeTangent(Vector2[] points, int index)
+    {
+        Vector2 tangent = ComputeTangent(points[index - 1], points[index + 1]);
+        m_shapeController.spline.SetTangentMode(index, ShapeTangentMode.Continuous);
+        m_shapeController.spline.SetLeftTangent(index, -tangent);
+        m_shapeController.spline.SetRightTangent(index, tangent);
+    }
+    void SetLeadingEdgeTangent(Vector2[] points, int index)
+    {
+        float mirrorXDistance = points[index + 1].x - points[index].x;
+        Vector2 mirrorPoint = new(points[index].x - mirrorXDistance, points[index].y);
+        Vector2 tangent = ComputeTangent(mirrorPoint, points[index + 1]);
+        m_shapeController.spline.SetTangentMode(index, ShapeTangentMode.Broken);
+        m_shapeController.spline.SetLeftTangent(index, Vector2.down);
+        m_shapeController.spline.SetRightTangent(index, tangent);
+    }
+    void SetTrailingEdgeTangent(Vector2[] points, int index)
+    {
+        float mirrorXDistance = points[index - 1].x - points[index].x;
+        Vector2 mirrorPoint = new(points[index].x - mirrorXDistance, points[index].y);
+        Vector2 tangent = ComputeTangent(points[index - 1], mirrorPoint);
+        m_shapeController.spline.SetTangentMode(index, ShapeTangentMode.Broken);
+        m_shapeController.spline.SetLeftTangent(index, -tangent);
+        m_shapeController.spline.SetRightTangent(index, Vector2.down);
+    }
     Vector2[] GenerateTerrainKeyPoints(Vector2[] overlapPoints, int seed)
     {
         int overlapCount = overlapPoints?.Length ?? 0;
@@ -60,7 +82,7 @@ public class TerrainSegment : MonoBehaviour
         Random.InitState(seed);
         for (int i = overlapCount; i < points.Length; i++)
         {
-            Vector2 prev = i > 0 ? points[i - 1] : new Vector2(transform.position.x, transform.position.y);
+            Vector2 prev = i > 0 ? points[i - 1] : new(transform.position.x, transform.position.y);
             Vector2 steps = new(Random.Range(m_minimums.x, m_maximums.x), Random.Range(m_minimums.y, m_maximums.y));
             points[i].x = prev.x + steps.x;
             points[i].y = Mathf.Clamp(currentYPosition + steps.y * directionalSign, transform.position.y + m_minHeight, transform.position.y + m_maxHeight);
