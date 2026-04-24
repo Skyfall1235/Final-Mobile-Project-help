@@ -1,6 +1,8 @@
-﻿public interface IScoreManager
+﻿using MatrixUtils.GenericDatatypes;
+
+public interface IScoreManager
 {
-    uint Score { get; }
+    Observer<uint> Score { get; }
     void AddScore(uint scoreToAdd);
     void RemoveScore(uint scoreToRemove);
     void ClearCurrentScore();
